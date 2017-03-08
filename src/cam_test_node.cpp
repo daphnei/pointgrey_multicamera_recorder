@@ -17,6 +17,8 @@
 #include "poll_cameras/CamTest.h"
 #include <ros/ros.h>
 
+
+
 int main(int argc, char** argv) {
   ROS_INFO("Initializaing Camera Polling Node");
 
@@ -37,6 +39,10 @@ int main(int argc, char** argv) {
           cam.stopPoll();
           ROS_INFO("Stopping polling camera.");
           break;
+        case 'q':
+          cam.stopPoll();
+          ROS_INFO("Exiting");
+          exit(1);
         default:
           ROS_INFO("Unrecognized input.");
       }
