@@ -32,7 +32,7 @@ add_dependencies(${PROJECT_NAME}
   ${catkin_EXPORTED_TARGETS}
   )
 
-add_executable(${PROJECT_NAME}_node src/cam_test_node.cpp src/CamTest.cpp)
+add_executable(${PROJECT_NAME}_node src/broadcast_cameras_node.cpp src/CamTest.cpp)
 
 # make sure configure headers are built before any node using them
 add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_gencfg)

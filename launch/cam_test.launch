@@ -1,12 +1,14 @@
 <launch>
     <!--############### Node Configurations ##################-->
     <arg name="output" default="screen"/>
-    <arg name="fps"    default="40"/>
+    <arg name="fps"    default="150"/>
 
     <!-- Camera Configurations -->
-    <!-- arg name="cam0" default="17041930"/ -->
     <arg name="cam0" default="16387048"/>
 
+    <arg name="duration" default="10" />
+
+    <!-- Broadcast camera image for specified amount of time. -->
     <node pkg="poll_cameras" type="poll_cameras_node" name="poll_cameras" output="$(arg output)">
         <param name="fps" type="double" value="$(arg fps)"/>
 
@@ -18,11 +20,18 @@
         <param name="shutter_ms" type="double" value="6"/>
         <param name="auto_gain" type="bool" value="false"/>
         <param name="gain_db" type="double" value="0"/>
+        
+        <param name="rec_length" type="double" value="10"/>
+        
 	<!-- trigger: -1 = free running, 0 = external or software trigger -->
 	<param name="trigger_source" type="int" value="0"/>
 	<param name="exposure" type="bool" value="false"/>
 	<param name="auto_exposure" type="bool" value="false"/>
 	<remap from="poll_cameras/exposure" to="/exposure_control/exposure"/>
-
     </node>
+
+    <!-- Record from the camera's topic for specified amount of time. -->
+    <node pkg="rosbag" type="record" name="cam0_bag"
+              args="--duration $(arg duration)s -O test.bag /poll_cameras/cam0/image_raw" />
+
 </launch>

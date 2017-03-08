@@ -31,7 +31,7 @@ namespace poll_cameras {
                                     &CamTest::expCallback, this);
     configServer_.setCallback(boost::bind(&CamTest::configure, this, _1, _2));
 
-    record_index = 0;
+    // record_index = 0;
   }
 
   CamTest::~CamTest()
