@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "poll_cameras/CamTest.h"
+#include "poll_cameras/CamController.h"
 #include <ros/ros.h>
 
 
@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh("~");
 
   try {
-    poll_cameras::CamTest cam(nh);
+    poll_cameras::CamController cam(nh);
 
 	float rec_length;
     nh.getParam("rec_length", rec_length);

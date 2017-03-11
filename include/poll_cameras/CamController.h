@@ -33,17 +33,17 @@ namespace flea3 {
 
 namespace poll_cameras {
 
-class CamTest {
+class CamController {
   
 public:
   using Cam = flea3::Flea3Ros;
   using CamPtr = boost::shared_ptr<Cam>;
   using Config = flea3::Flea3DynConfig;
 
-  CamTest(const ros::NodeHandle& parentNode);
-  ~CamTest();
-  CamTest(const CamTest&) = delete;
-  CamTest& operator=(const CamTest&) = delete;
+  CamController(const ros::NodeHandle& parentNode);
+  ~CamController();
+  CamController(const CamController&) = delete;
+  CamController& operator=(const CamController&) = delete;
 
 
   void configure(Config& config, int level);
