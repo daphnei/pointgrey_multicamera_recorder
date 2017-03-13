@@ -26,10 +26,12 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh("~");
 
   try {
-    poll_cameras::CamController cam(nh);
-
 	float rec_length;
     nh.getParam("rec_length", rec_length);
+	//int num_cameras;
+    //nh.getParam("num_cameras", num_cameras);
+
+    poll_cameras::CamController cam(nh, 2);
 
     ROS_INFO("Record for %f seconds", rec_length);
 
