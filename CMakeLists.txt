@@ -21,9 +21,9 @@ include_directories(
   )
 
 
-#add_executable(${PROJECT_NAME} src/CamTest.cpp)
+#add_executable(${PROJECT_NAME} src/CamController.cpp)
 
-add_library(${PROJECT_NAME} src/CamTest.cpp)
+add_library(${PROJECT_NAME} src/CamController.cpp)
 
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
@@ -32,7 +32,7 @@ add_dependencies(${PROJECT_NAME}
   ${catkin_EXPORTED_TARGETS}
   )
 
-add_executable(${PROJECT_NAME}_node src/broadcast_cameras_node.cpp src/CamTest.cpp)
+add_executable(${PROJECT_NAME}_node src/broadcast_cameras_node.cpp src/CamController.cpp)
 
 # make sure configure headers are built before any node using them
 add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_gencfg)
@@ -45,7 +45,7 @@ target_link_libraries(${PROJECT_NAME}_node
 #
 # build the test node as well
 #
-#add_executable(cam_test_node src/cam_test_node.cpp src/CamTest.cpp)
+#add_executable(cam_test_node src/cam_test_node.cpp src/CamController.cpp)
 
 #target_link_libraries(cam_test_node
 #  ${PROJECT_NAME}

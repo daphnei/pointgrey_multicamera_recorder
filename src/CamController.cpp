@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *		 http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,160 +18,195 @@
 #include <flea3/Flea3DynConfig.h>
 #include <flea3/flea3_ros.h>
 
+#include <signal.h>
+
 namespace poll_cameras {
 
-  CamController::CamController(const ros::NodeHandle& parentNode)
-    : parentNode_(parentNode), configServer_(parentNode) {
-    camera_ = boost::make_shared<Cam>(parentNode_, "cam0");
-    // for publishing the currently set exposure values
-    expPub_ = parentNode_.advertise<std_msgs::Float64MultiArray>("current_exposure", 1);
-    // camera_ = parentNode_.advertise<sensor_msgs::Image>("cam0", 1);
+	CamController::CamController(const ros::NodeHandle& parentNode)
+		: parentNode_(parentNode), configServer_(parentNode) {
 
-    expSub_ = parentNode_.subscribe("exposure", 1,
-                                    &CamController::expCallback, this);
-    configServer_.setCallback(boost::bind(&CamController::configure, this, _1, _2));
+		num_cameras_ = 2;
+		for (int i = 0; i < 2; i++) {
+			char cam_name[6];
+			sprintf(cam_name, "cam%d", i);
+			CamPtr c = boost::make_shared<Cam>(parentNode_, cam_name);
+			cameras_.push_back(c);
+		}
 
-    // record_index = 0;
-  }
+		camera_ = cameras_[0];
 
-  CamController::~CamController()
-  {
-    stopPoll();
-  }
-  
-  void CamController::expCallback(const std_msgs::Float64MultiArray::ConstPtr &expMsg) {
-    std::lock_guard<std::mutex> lock(expMutex_);
-    double shutter(expMsg->data[0]), gain(expMsg->data[1]);
-    if (shutter >= 0) {
-      optimalShutter_ = shutter;
-      updateShutter_  = true;
-    }
-    if (gain >= 0) {
-      optimalGain_ = gain;
-      updateGain_ = true;
-    }
-  }
+		// for publishing the currently set exposure values
+		expPub_ = parentNode_.advertise<std_msgs::Float64MultiArray>("current_exposure", 1);
+		// camera_ = parentNode_.advertise<sensor_msgs::Image>("cam0", 1);
 
-  // void CamController::startRecording() {
-    // char bag_name[15];
-    // strftime(&bag_namr, 15, "%y_%m_%d")
-    // sprintf(&bag_name, "%s%03d.bag", bag_name, record_index);
-    // recorder.open(bag_name);
+		expSub_ = parentNode_.subscribe("exposure", 1,
+																		&CamController::expCallback, this);
+		configServer_.setCallback(boost::bind(&CamController::configure, this, _1, _2));
+
+		// record_index = 0;
+	}
+
+	CamController::~CamController()
+	{
+		stopPoll();
+	}
+	
+	void CamController::expCallback(const std_msgs::Float64MultiArray::ConstPtr &expMsg) {
+		std::lock_guard<std::mutex> lock(expMutex_);
+		double shutter(expMsg->data[0]), gain(expMsg->data[1]);
+		if (shutter >= 0) {
+			optimalShutter_ = shutter;
+			updateShutter_	= true;
+		}
+		if (gain >= 0) {
+			optimalGain_ = gain;
+			updateGain_ = true;
+		}
+	}
+
+	// void CamController::startRecording() {
+		// char bag_name[15];
+		// strftime(&bag_namr, 15, "%y_%m_%d")
+		// sprintf(&bag_name, "%s%03d.bag", bag_name, record_index);
+		// recorder.open(bag_name);
 // 
-    // recorder.record("/cam_test/cam0/image_raw", msg, ros::Time::now());
-  // }
+		// recorder.record("/cam_test/cam0/image_raw", msg, ros::Time::now());
+	// }
 
-  void CamController::setShutter(double s) {
-    bool auto_shutter(false);
-    double rs(s);
-    camera_->camera().SetShutter(auto_shutter, rs);
-    ROS_INFO("set shutter to: %8.4fms, driver returned %8.4fms", s, rs);}
+	void CamController::setShutter(double s) {
+		bool auto_shutter(false);
+		double rs(s);
+		camera_->camera().SetShutter(auto_shutter, rs);
+		ROS_INFO("set shutter to: %8.4fms, driver returned %8.4fms", s, rs);}
 
-  void CamController::setGain(double g) {
-    bool auto_gain(false);
-    double rg(g);
-    camera_->camera().SetGain(auto_gain, rg);
-    ROS_INFO("set gain to:    %8.4fms, driver returned %8.4fms", g, rg);
-  }
+	void CamController::setGain(double g) {
+		bool auto_gain(false);
+		double rg(g);
+		camera_->camera().SetGain(auto_gain, rg);
+		ROS_INFO("set gain to:		%8.4fms, driver returned %8.4fms", g, rg);
+	}
 
-  void CamController::configure(Config& config, int level) {
-    if (level < 0) {
-      ROS_INFO("%s: %s", parentNode_.getNamespace().c_str(),
-               "Initializing reconfigure server");
-    }
-    stopPoll();
-    stopSoftTrigger();
-    triggerSleepTime_ = 1000000 / config.fps;
-    configureCameras(config);
-    startPoll();
-    startSoftTrigger();
-  }
+	void CamController::configure(Config& config, int level) {
+		if (level < 0) {
+			ROS_INFO("%s: %s", parentNode_.getNamespace().c_str(),
+							 "Initializing reconfigure server");
+		}
 
-  void CamController::pollImages() {
+		ROS_INFO("Reconfiguring");
 
-    // first get the current camera settings and
-    // publish them for the exposure control module
-    optimalShutter_ = camera_->camera().GetShutterTimeSec() * 1000;
-   
-    // TODO: figure out why doesn't work 
-    // optimalGain_    = camera_->camera().GetGain();
-    optimalGain_    = 0; 
+		stopPoll();
+		stopSoftTrigger();
+		triggerSleepTime_ = 1000000 / config.fps;
+		configureCameras(config);
+		// startPoll();
+		// startSoftTrigger();
+	}
 
-    publishCurrentExposure();
-    lastPublishTime_ = ros::Time::now();
-    ROS_INFO("node up and running!");
-    while (isPolling_ && ros::ok()) {
-      auto image_msg = boost::make_shared<sensor_msgs::Image>();
-      bool ret = camera_->Grab(image_msg);
-      ros::Time time = ros::Time::now();
-      updateExposure();
-      image_msg->header.stamp = time;
-      if (time - lastPublishTime_ > publishExposureInterval_) {
-        publishCurrentExposure();
-        lastPublishTime_ = time;
-      }
-      // Publish takes less then 0.1ms to finish, so it is safe to put it here
-      // in the loop
-      if (ret) camera_->Publish(image_msg);
-    }
-  }
+	void CamController::pollImages() {
+		ROS_INFO("In Polling Images thread");
 
+		// first get the current camera settings and
+		// publish them for the exposure control module
+		optimalShutter_ = camera_->camera().GetShutterTimeSec() * 1000;
+	 
+		// TODO: figure out why doesn't work 
+		// optimalGain_		= camera_->camera().GetGain();
+		optimalGain_		= 0; 
 
-  void CamController::updateExposure() {
-    std::lock_guard<std::mutex> lock(expMutex_);
-    if (updateShutter_) {
-      setShutter(optimalShutter_);
-      updateShutter_ = false;
-    }
-    if (updateGain_) {
-      setGain(optimalGain_);
-      updateGain_ = false;
-    }
-  }
+		publishCurrentExposure();
+		lastPublishTime_ = ros::Time::now();
+		ROS_INFO("node up and running!");
+		while (isPolling_ && ros::ok()) {
+			ros::Time time = ros::Time::now();
 
-  void CamController::publishCurrentExposure() {
-    std_msgs::Float64MultiArray msg;
-    msg.data.push_back(optimalShutter_);
-    msg.data.push_back(optimalGain_);
-    expPub_.publish(msg);
-  }
+			// Make a thread for each camera and call grabFromCamera
+			// for (int i = 0; i < num_cameras_; i++) {
 
-  void CamController::configureCameras(Config& config) {
-    camera_->Stop();
-    camera_->camera().Configure(config);
-    camera_->set_fps(config.fps);
-    camera_->Start();
-  }
+			// } 
+			// grabThread_ = 
+					// boost::make_shared<boost::thread>(&CamController::grabFromCamera,
+												// this, cameras_[0], time);
+			// grabThread_->join();
+			grabFromCamera(cameras_[0], time); 
 
-  void CamController::startPoll() {
-    isPolling_ = true;
-    imgPollThread_ =
-      boost::make_shared<boost::thread>(&CamController::pollImages, this);
-  }
+			if (time - lastPublishTime_ > publishExposureInterval_) {
+				publishCurrentExposure();
+				lastPublishTime_ = time;
+			}
+			// Publish takes less then 0.1ms to finish, so it is safe to put it here
+			// in the loop
+		}
+	}
 
-  void CamController::stopPoll() {
-    if (!isPolling_) return;
-    isPolling_ = false;
-    imgPollThread_->join();
-  }
+	void CamController::grabFromCamera(CamPtr camera, ros::Time time) {
+			updateExposure();
+			raise(SIGINT);
+			auto image_msg = boost::make_shared<sensor_msgs::Image>();
+			bool ret = camera_->Grab(image_msg);
+			image_msg->header.stamp = time;
+			if (ret) {
+				ROS_INFO("Publishing");
+				camera_->Publish(image_msg);
+			} else {
+				ROS_INFO("Not Publishing");
+			}
+	}
 
-  void CamController::startSoftTrigger() {
-    isTriggering_ = true;
-    triggerThread_ =
-      boost::make_shared<boost::thread>(&CamController::triggerThread, this);
-  }
+	void CamController::updateExposure() {
+		std::lock_guard<std::mutex> lock(expMutex_);
+		if (updateShutter_) {
+			setShutter(optimalShutter_);
+			updateShutter_ = false;
+		}
+		if (updateGain_) {
+			setGain(optimalGain_);
+			updateGain_ = false;
+		}
+	}
 
-  void CamController::stopSoftTrigger() {
-    if (!isTriggering_) return;
-    isTriggering_ = false;
-    triggerThread_->join();
-  }
+	void CamController::publishCurrentExposure() {
+		std_msgs::Float64MultiArray msg;
+		msg.data.push_back(optimalShutter_);
+		msg.data.push_back(optimalGain_);
+		expPub_.publish(msg);
+	}
 
-  void CamController::triggerThread() {
-    while (isTriggering_ && ros::ok()) {
-      usleep(triggerSleepTime_);
-      camera_->camera().FireSoftwareTrigger();
-    }
-  }
+	void CamController::configureCameras(Config& config) {
+		camera_->Stop();
+		camera_->camera().Configure(config);
+		camera_->set_fps(config.fps);
+		camera_->Start();
+	}
 
-}  // namespace poll_cameras
+	void CamController::startPoll() {
+		isPolling_ = true;
+		imgPollThread_ =
+			boost::make_shared<boost::thread>(&CamController::pollImages, this);
+	}
+
+	void CamController::stopPoll() {
+		if (!isPolling_) return;
+		isPolling_ = false;
+		imgPollThread_->join();
+	}
+
+	void CamController::startSoftTrigger() {
+		isTriggering_ = true;
+		triggerThread_ =
+			boost::make_shared<boost::thread>(&CamController::triggerThread, this);
+	}
+
+	void CamController::stopSoftTrigger() {
+		if (!isTriggering_) return;
+		isTriggering_ = false;
+		triggerThread_->join();
+	}
+
+	void CamController::triggerThread() {
+		while (isTriggering_ && ros::ok()) {
+			usleep(triggerSleepTime_);
+			camera_->camera().FireSoftwareTrigger();
+		}
+	}
+
+}	// namespace poll_cameras

@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *		 http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,27 +18,26 @@
 #include <ros/ros.h>
 
 
-
 int main(int argc, char** argv) {
-  ROS_INFO("Initializaing Camera Polling Node");
+	ROS_INFO("Initializaing Camera Polling Node");
 
-  ros::init(argc, argv, "poll_cameras");
-  ros::NodeHandle nh("~");
+	ros::init(argc, argv, "poll_cameras");
+	ros::NodeHandle nh("~");
 
-  try {
-    poll_cameras::CamController cam(nh);
+	try {
+		poll_cameras::CamController cam(nh);
 
-	float rec_length;
-    nh.getParam("rec_length", rec_length);
+		float rec_length;
+		nh.getParam("rec_length", rec_length);
 
-    ROS_INFO("Record for %f seconds", rec_length);
+		ROS_INFO("Record for %f seconds", rec_length);
 
-    cam.startPoll();
-    ros::Duration(rec_length+1).sleep();
-    cam.stopPoll();
+		cam.startPoll();
+		ros::Duration(rec_length+1).sleep();
+		cam.stopPoll();
 
-    ros::spin();
-  } catch (const std::exception& e) {
-    ROS_ERROR("%s: %s", nh.getNamespace().c_str(), e.what());
-  }
+		// ros::spin();
+	} catch (const std::exception& e) {
+		ROS_ERROR("%s: %s", nh.getNamespace().c_str(), e.what());
+	}
 }

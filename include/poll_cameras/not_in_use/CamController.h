@@ -40,10 +40,10 @@ public:
   using CamPtr = boost::shared_ptr<Cam>;
   using Config = flea3::Flea3DynConfig;
 
-  CamController(const ros::NodeHandle& parentNode);
+  CamController(const ros::NodeHandle& parentNode, const int index);
   ~CamController();
-  CamController(const CamController&) = delete;
-  CamController& operator=(const CamController&) = delete;
+  // CamController(const CamController&) = delete;
+  // CamController& operator=(const CamController&) = delete;
 
 
   void configure(Config& config, int level);
@@ -55,23 +55,19 @@ public:
   void updateExposure();
   void pollImages();
   void triggerThread();
-  void startPoll();
-  void stopPoll();
+  // void startPoll();
+  // void stopPoll();
   void configureCameras(Config& config);
   void startSoftTrigger();
   void stopSoftTrigger();
 
-  void grabFromCamera(CamPtr camera, ros::Time time);
-
-private:
+// private:
   // Variables for the camera state
   ros::NodeHandle   parentNode_;
   ros::Subscriber   expSub_;
   ros::Publisher    expPub_;
   std::mutex        expMutex_;
-  CamPtr            camera_; // TODO: delete
-  int               num_cameras_;
-  std::vector<CamPtr>    cameras_;
+  CamPtr            camera_;
   bool              isPolling_{false};
   ros::Time         lastPublishTime_;
   ros::Duration     publishExposureInterval_{1.0};  // in seconds
@@ -81,10 +77,8 @@ private:
   bool              updateGain_{false};
   int               triggerSleepTime_{100000}; // in usec
   bool              isTriggering_{false};
-  boost::shared_ptr<boost::thread>      imgPollThread_;
+  char              name_[6];  
   boost::shared_ptr<boost::thread>      triggerThread_;
-	// There should be 4 of these at some point.
-  boost::shared_ptr<boost::thread>      grabThread_;
   dynamic_reconfigure::Server<Config>   configServer_;
 
   // Variables for recording
