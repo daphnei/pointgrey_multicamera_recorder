@@ -1,0 +1,60 @@
+<launch>
+    <!--############### Node Configurations ##################-->
+    <arg name="output" default="screen"/>
+    <arg name="fps"    default="5"/>
+
+    <!-- Camera Configurations -->
+    <arg name="cam0" default="17041930"/>
+    <arg name="cam1" default="17041931"/>
+    <arg name="cam2" default="17041932"/>
+    <arg name="cam3" default="17041936"/>
+
+    <arg name="duration" default="6" />
+    <arg name="num_cameras" default="2" />
+
+	<arg name="out_file_prefix" default="rec" /> 
+	<arg name="save_dir" default="/data/" />
+
+    <!-- Broadcast camera image for specified amount of time. -->
+    <node pkg="poll_cameras" type="poll_cameras_node" name="poll_cameras" output="$(arg output)">
+        <param name="cam0/identifier" type="string" value="$(arg cam0)"/>
+        <param name="cam1/identifier" type="string" value="$(arg cam1)"/>
+        <param name="cam2/identifier" type="string" value="$(arg cam2)"/>
+        <param name="cam3/identifier" type="string" value="$(arg cam3)"/>
+
+		<!--
+        <param name="cam0/camera_name" type="string" value="pg_$(arg cam0)"/>
+        <param name="cam1/camera_name" type="string" value="pg_$(arg cam1)"/>
+        <param name="cam2/camera_name" type="string" value="pg_$(arg cam2)"/>
+        <param name="cam3/camera_name" type="string" value="pg_$(arg cam3)"/>
+        -->
+
+        <!-- <param name="cam0/calib_url" type="string" value="file://${ROS_HOME}/camera_info/pg_$(arg cam0).yaml"/> -->
+
+        <param name="auto_shutter" type="bool" value="false"/>
+        <param name="shutter_ms" type="double" value="6"/>
+        <param name="auto_gain" type="bool" value="false"/>
+        <param name="gain_db" type="double" value="0"/>
+        <param name="fps" type="double" value="$(arg fps)"/>
+        
+        <param name="rec_length" type="double" value="$(arg duration)"/>
+        <param name="num_cameras" type="int" value="$(arg num_cameras)"/>
+        
+		<!-- trigger: -1 = free running, 0 = external or software trigger -->
+		<param name="trigger_source" type="int" value="0"/>
+		<param name="exposure" type="bool" value="false"/>
+		<param name="auto_exposure" type="bool" value="false"/>
+	<remap from="poll_cameras/exposure" to="/exposure_control/exposure"/>
+    </node>
+
+    <!-- Record from the camera's topic for specified amount of time. -->
+    <node pkg="rosbag" type="record" name="cam0_bag"
+              args="--duration $(arg duration)s -O $(arg save_dir)/$(arg out_file_prefix)_cam0.bag /poll_cameras/cam0/image_raw" />
+    <node pkg="rosbag" type="record" name="cam1_bag"
+              args="--duration $(arg duration)s -O $(arg save_dir)/$(arg out_file_prefix)_cam1.bag /poll_cameras/cam1/image_raw" />
+    <node pkg="rosbag" type="record" name="cam2_bag"
+              args="--duration $(arg duration)s -O $(arg save_dir)/$(arg out_file_prefix)_cam2.bag /poll_cameras/cam2/image_raw" />
+    <node pkg="rosbag" type="record" name="cam3_bag"
+              args="--duration $(arg duration)s -O $(arg save_dir)/$(arg out_file_prefix)_cam3.bag /poll_cameras/cam3/image_raw" />
+
+</launch>

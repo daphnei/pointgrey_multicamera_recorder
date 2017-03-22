@@ -28,16 +28,20 @@ int main(int argc, char** argv) {
   try {
 	float rec_length;
     nh.getParam("rec_length", rec_length);
-	//int num_cameras;
-    //nh.getParam("num_cameras", num_cameras);
+	int num_cameras;
+    nh.getParam("num_cameras", num_cameras);
 
-    poll_cameras::CamController cam(nh, 2);
+	ROS_INFO("Recording for %f seconds on %d cameras.", rec_length, num_cameras);
+ 
+    poll_cameras::CamController cam(nh, num_cameras);
 
-    ROS_INFO("Record for %f seconds", rec_length);
+	ROS_INFO("Recording start.");	
 
     cam.startPoll();
     ros::Duration(rec_length+1).sleep();
     cam.stopPoll();
+
+	ROS_INFO("Recording ended.");
 
     ros::spin();
   } catch (const std::exception& e) {

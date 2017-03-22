@@ -1,0 +1,22 @@
+<launch>
+    <!--############### Node Configurations ##################-->
+    <arg name="output" default="screen"/>
+    <arg name="fps"    default="150"/>
+
+    <!-- Camera Configurations -->
+    <arg name="cam0" default="17041930"/>
+    <arg name="cam1" default="17041931"/>
+    <arg name="cam2" default="17041932"/>
+    <arg name="cam3" default="17041936"/>
+
+    <arg name="duration" default="6" />
+    <arg name="num_cameras" default="2" />
+
+	<arg name="out_file_prefix" default="rec" /> 
+	<arg name="save_dir" default="/data/" />
+
+    <node pkg="poll_cameras" type="analyze_bags_node.py" name="bag_analyzer_node" output="$(arg output)">
+		<param name="bags_path" type="string" value="$(arg save_dir)"/>
+        <param name="num_cameras" type="int" value="$(arg num_cameras)"/>
+	</node>
+</launch>

@@ -15,17 +15,21 @@
  */
 
 #include <poll_cameras/CamController.h>
-#include <flea3/Flea3DynConfig.h>
-#include <flea3/flea3_ros.h>
+#include <math.h>
 
 namespace poll_cameras {
 
   CamController::CamController(const ros::NodeHandle& parentNode, int numCameras)
     : parentNode_(parentNode),
       configServer_(parentNode),
-      triggerThreads_(numCameras) {
+      frameGrabThreads_(numCameras) {
 
     numCameras_ = numCameras;
+	numFramesToGrab_ = 0;
+
+    ros::Time foo = ros::Time::now();
+    frameTime_ = ros::Time::now();
+	index_ = 0;
 
     for (int i = 0; i<numCameras_; i++) {
       CamPtr cam_tmp = 
@@ -33,17 +37,13 @@ namespace poll_cameras {
 
       cameras_.push_back(move(cam_tmp));
     }
-    camera_ = cameras_[1];
 
     // for publishing the currently set exposure values
     expPub_ = parentNode_.advertise<std_msgs::Float64MultiArray>("current_exposure", 1);
-    // camera_ = parentNode_.advertise<sensor_msgs::Image>("cam0", 1);
 
     expSub_ = parentNode_.subscribe("exposure", 1,
                                     &CamController::expCallback, this);
     configServer_.setCallback(boost::bind(&CamController::configure, this, _1, _2));
-
-    // record_index = 0;
   }
 
   CamController::~CamController()
@@ -63,16 +63,7 @@ namespace poll_cameras {
       updateGain_ = true;
     }
   }
-
-  // void CamController::startRecording() {
-    // char bag_name[15];
-    // strftime(&bag_namr, 15, "%y_%m_%d")
-    // sprintf(&bag_name, "%s%03d.bag", bag_name, record_index);
-    // recorder.open(bag_name);
-// 
-    // recorder.record("/cam_test/cam0/image_raw", msg, ros::Time::now());
-  // }
-
+    
   void CamController::setShutter(double s) {
     bool auto_shutter(false);
     double rs(s);
@@ -93,11 +84,12 @@ namespace poll_cameras {
       ROS_INFO("%s: %s", parentNode_.getNamespace().c_str(),
                "Initializing reconfigure server");
     }
-    stopPoll();
+	bool wasPolling = isPolling_;
+	if (wasPolling) stopPoll();
     stopSoftTrigger();
     triggerSleepTime_ = 1000000 / config.fps;
     configureCameras(config);
-    startPoll();
+    if (wasPolling) startPoll();
     startSoftTrigger();
   }
 
@@ -112,29 +104,53 @@ namespace poll_cameras {
     optimalGain_    = 0; 
 
     publishCurrentExposure();
-    lastPublishTime_ = ros::Time::now();
-    ROS_INFO("node up and running!");
-    while (isPolling_ && ros::ok()) {
-      ros::Time time = ros::Time::now();
 
-      for (int i=0; i<numCameras_; ++i) {
-        CamPtr curCam = cameras_[i];
-        auto image_msg = boost::make_shared<sensor_msgs::Image>();
-        bool ret = curCam->Grab(image_msg);
-        image_msg->header.stamp = time;
-        // Publish takes less then 0.1ms to finish, so it is safe to put it here
-        // in the loop
-        if (ret) curCam->Publish(image_msg);
-      }
+    lastPublishTime_ = ros::Time::now();
+    ROS_INFO("Polling has started!");
+
+    while (isPolling_ && ros::ok()) {
       updateExposure();
 
-      if (time - lastPublishTime_ > publishExposureInterval_) {
+      if (frameTime_ - lastPublishTime_ > publishExposureInterval_) {
         publishCurrentExposure();
-        lastPublishTime_ = time;
+        lastPublishTime_ = frameTime_;
       }
     }
   }
 
+  void CamController::frameGrabThread(int camIndex) {
+	ROS_INFO("Starting up frame grab thread for camera %d", camIndex);
+
+    while (isPolling_ && ros::ok()) {
+      std::unique_lock<std::mutex> lock(grabFramesMutex_);
+
+      while((numFramesToGrab_ & (1 << camIndex)) == 0) {
+        grabFramesCV_.wait(lock);
+		// ROS_INFO("Woken up in camIndex %d", camIndex);
+        // ROS_INFO("g_woken: Frames to grab: %d, %f", numFramesToGrab_,
+				// pow(2, camIndex));
+      } 
+
+      // Grab a copy of the time, then can release the lock so that 
+      // trigger can start a new frame if necessary.
+      Time myFrameTime = Time(frameTime_);
+      // ROS_INFO("Camera %d grabbing %f", camIndex, frameTime_.toSec());
+
+      numFramesToGrab_ = (numFramesToGrab_ ^ (1 << camIndex));
+      // ROS_INFO("g: Frames to grab: %d", numFramesToGrab_);
+      lock.unlock();
+      grabFramesCV_.notify_all(); 
+
+      CamPtr curCam = cameras_[camIndex];
+      auto image_msg = boost::make_shared<sensor_msgs::Image>();
+      bool ret = curCam->Grab(image_msg);
+      image_msg->header.stamp = myFrameTime;
+      // Publish takes less then 0.1ms to finish, so it is safe to put it        
+      // in the loop
+      if (ret) curCam->Publish(image_msg);
+
+    }
+  }
 
   void CamController::updateExposure() {
     std::lock_guard<std::mutex> lock(expMutex_);
@@ -167,10 +183,14 @@ namespace poll_cameras {
 
   void CamController::startPoll() {
     isPolling_ = true;
+
     for (int i=0; i<numCameras_; ++i) {
-      imgPollThread_ =
-          boost::make_shared<boost::thread>(&CamController::pollImages, this);
+      frameGrabThreads_[i] =
+      	boost::make_shared<boost::thread>(&CamController::frameGrabThread, this, i);
     }
+
+    imgPollThread_ =
+      boost::make_shared<boost::thread>(&CamController::pollImages, this);
   }
 
   void CamController::stopPoll() {
@@ -181,24 +201,36 @@ namespace poll_cameras {
 
   void CamController::startSoftTrigger() {
     isTriggering_ = true;
-    for (int i=0; i<numCameras_; ++i) {
-      triggerThreads_[i] =
-      boost::make_shared<boost::thread>(&CamController::triggerThread, this, i);
-    }
+    triggerThread_ =
+        boost::make_shared<boost::thread>(
+            &CamController::triggerThread, this);
   }
 
   void CamController::stopSoftTrigger() {
     if (!isTriggering_) return;
     isTriggering_ = false;
-    for (int i=0; i<numCameras_; ++i) {
-      triggerThreads_[i]->join();
-    }
+    triggerThread_->join();
   }
 
-  void CamController::triggerThread(int index) {
+  void CamController::triggerThread() {
     while (isTriggering_ && ros::ok()) {
       usleep(triggerSleepTime_);
-      cameras_[index]->camera().FireSoftwareTrigger();
+
+      std::unique_lock<std::mutex> lock(grabFramesMutex_);
+      while (isPolling_ && numFramesToGrab_ > 0) {
+        grabFramesCV_.wait(lock);
+      }
+
+      frameTime_ = ros::Time(index_++); //ros::Time::now();
+
+      for (int i=0; i<numCameras_; i++) {
+        cameras_[i]->camera().FireSoftwareTrigger();
+      }
+
+      numFramesToGrab_ = int(pow(2, numCameras_)) - 1;
+      lock.unlock();
+      grabFramesCV_.notify_all(); 
+
     }
   }
 

@@ -19,11 +19,15 @@
 
 #include <mutex>
 #include <boost/thread.hpp>
+#include <condition_variable>
 #include <boost/shared_ptr.hpp>
 
 #include <ros/ros.h>
+#include <time.h>
+#include <ros/message_traits.h>
 #include <dynamic_reconfigure/server.h>
 #include <flea3/Flea3DynConfig.h>
+#include <flea3/flea3_ros.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <sensor_msgs/Image.h>
 
@@ -40,12 +44,12 @@ public:
   using CamPtr = boost::shared_ptr<Cam>;
   using ThreadPtr = boost::shared_ptr<boost::thread>;
   using Config = flea3::Flea3DynConfig;
+  using Time = ros::Time;
 
   CamController(const ros::NodeHandle& parentNode, int numCameras);
   ~CamController();
   CamController(const CamController&) = delete;
   CamController& operator=(const CamController&) = delete;
-
 
   void configure(Config& config, int level);
   void expCallback(const std_msgs::Float64MultiArray::ConstPtr &expMsg);
@@ -54,39 +58,44 @@ public:
   void setGain(double g);
   void publishCurrentExposure();
   void updateExposure();
-  void pollImages();
-  void triggerThread(int index);
   void startPoll();
   void stopPoll();
-  void configureCameras(Config& config);
   void startSoftTrigger();
   void stopSoftTrigger();
+  void configureCameras(Config& config);
 
 private:
+  // Thread functions are private.
+  void pollImages();
+  void triggerThread();
+  void frameGrabThread(int camIndex);
+
   // Variables for the camera state
-  ros::NodeHandle   parentNode_;
-  ros::Subscriber   expSub_;
-  ros::Publisher    expPub_;
-  std::mutex        expMutex_;
-  int               numCameras_;
-  CamPtr            camera_;
-  std::vector<CamPtr> cameras_;
-  bool              isPolling_{false};
-  ros::Time         lastPublishTime_;
-  ros::Duration     publishExposureInterval_{1.0};  // in seconds
-  double            optimalShutter_{10};
-  double            optimalGain_{0};
-  bool              updateShutter_{false};
-  bool              updateGain_{false};
-  int               triggerSleepTime_{100000}; // in usec
-  bool              isTriggering_{false};
-  boost::shared_ptr<boost::thread>      imgPollThread_;
-  std::vector<ThreadPtr>      triggerThreads_;
+  ros::NodeHandle          parentNode_;
+  ros::Subscriber          expSub_;
+  ros::Publisher           expPub_;
+  std::mutex               expMutex_;
+  std::mutex               grabFramesMutex_;
+  std::condition_variable  grabFramesCV_;
+  int                      numFramesToGrab_;
+  int                      numCameras_;
+  Time                frameTime_;
+  std::vector<CamPtr>      cameras_;
+  bool                     isPolling_{false};
+  Time                lastPublishTime_;
+  ros::Duration            publishExposureInterval_{1.0};  // in seconds
+  double                   optimalShutter_{10};
+  double                   optimalGain_{0};
+  bool                     updateShutter_{false};
+  bool                     updateGain_{false};
+  int                      triggerSleepTime_{100000}; // in usec
+  bool                     isTriggering_{false};
+  ThreadPtr                imgPollThread_;
+  ThreadPtr                triggerThread_;
+  std::vector<ThreadPtr>   frameGrabThreads_;
   dynamic_reconfigure::Server<Config>   configServer_;
 
-  // Variables for recording
-  // int                   record_index;  
-  // ros::record::Recorder recorder;
+  long index_;
 };
 
 }
