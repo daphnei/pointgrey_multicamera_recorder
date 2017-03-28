@@ -25,26 +25,29 @@ if __name__ == "__main__":
 		print("First 20 times: ")
 		i = 0
 		time_diffs = []
-		last_time = None
-   		for topic, msg, t in bag.read_messages(topics=[]):
+		last_timestamp = None
+   		for topic, msg, _ in bag.read_messages(topics=[]):
+			timestamp = (10e9 * msg.header.stamp.secs) + msg.header.stamp.nsecs
+ 
 			if i >= 1:
-				time_diffs.append((t - last_time).to_sec())
-			last_time = t
+				time_diffs.append(timestamp - last_timestamp)
+			last_timestamp = timestamp
 
 			if (i < 20):
-				print(t)
+				print timestamp
 				i = i+1
 
 			# t = t.to_sec()
-			if t in t_dict:
-				t_dict[t] += 1
+			if timestamp in t_dict:
+				t_dict[timestamp] += 1
 			else:
-				t_dict[t] = 1
+				t_dict[timestamp] = 1
 	
 		time_diffs = np.array(time_diffs)
 		mean_diff = np.mean(time_diffs)
-		print("Mean time diff: " + str(1./mean_diff)) # + " ( " + str(1/(mean_diff* 1.0e-9)) + " FPS )")
-		print("Stdv time diff: " + str(1./np.std(time_diffs)))
+		std_diff = np.std(time_diffs)
+		print("Mean time diff: " + str(10e-11 * mean_diff)) # + " ( " + str(1/(mean_diff* 1.0e-9)) + " FPS )")
+		print("Stdv time diff: " + str(std_diff))
 
 		print("\n")
 		bag.close()
@@ -52,10 +55,4 @@ if __name__ == "__main__":
 	for i in xrange(1, num_cameras + 1):
 		num_times = sum(1 for x in t_dict.values() if x == i)
 		print(str(num_times) + " timestamps occur " + str(i) + " times.")
-
-
-
-
-
-
 

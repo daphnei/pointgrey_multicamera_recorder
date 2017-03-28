@@ -137,8 +137,7 @@ namespace poll_cameras {
       grabFramesCV_.notify_all(); 
 
       CamPtr curCam = cameras_[camIndex];
-      auto image_msg = boost::make_shared<sensor_msgs::Image>();
-      bool ret = curCam->Grab(image_msg);
+      auto image_msg = boost::make_shared<sensor_msgs::Image>();      bool ret = curCam->Grab(image_msg);
       image_msg->header.stamp = myFrameTime;
       // Publish takes less then 0.1ms to finish, so it is safe to put it        
       // in the loop
