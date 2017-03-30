@@ -52,12 +52,7 @@ public:
   CamController& operator=(const CamController&) = delete;
 
   void configure(Config& config, int level);
-  void expCallback(const std_msgs::Float64MultiArray::ConstPtr &expMsg);
 
-  void setShutter(double s);
-  void setGain(double g);
-  void publishCurrentExposure();
-  void updateExposure();
   void startPoll();
   void stopPoll();
   void startSoftTrigger();

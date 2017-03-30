@@ -1,7 +1,7 @@
 <launch>
     <!--############### Node Configurations ##################-->
     <arg name="output" default="screen"/>
-    <arg name="fps"    default="120"/>
+    <arg name="fps"    default="75"/>
 
     <!-- Camera Configurations -->
     <arg name="cam0" default="17041930"/>
@@ -9,8 +9,8 @@
     <arg name="cam2" default="17041932"/>
     <arg name="cam3" default="17041936"/>
 
-    <arg name="duration" default="60" />
-    <arg name="num_cameras" default="2" />
+    <arg name="duration" default="5" />
+    <arg name="num_cameras" default="1" />
 
 	<arg name="out_file_prefix" default="rec" /> 
 	<arg name="save_dir" default="/data/" />
@@ -33,7 +33,8 @@
         <param name="cam3/calib_url" type="string" value="file://${ROS_HOME}/camera_info/pg_$(arg cam3).yaml"/>
 
         <param name="auto_shutter" type="bool" value="false"/>
-        <param name="shutter_ms" type="double" value="6"/>
+        <param name="shutter_ms" type="double" value="5"/>
+        <param name="auto_exposure" type="bool" value="false"/>
         <param name="auto_gain" type="bool" value="false"/>
         <param name="gain_db" type="double" value="0"/>
         <param name="fps" type="double" value="$(arg fps)"/>
@@ -49,13 +50,7 @@
     </node>
 
     <!-- Record from the camera's topic for specified amount of time. -->
-    <node pkg="rosbag" type="record" name="cam0_bag"
-              args="--duration $(arg duration)s -O $(arg save_dir)/$(arg out_file_prefix)_cam0.bag /poll_cameras/cam0/image_raw" />
-    <node pkg="rosbag" type="record" name="cam1_bag"
-              args="--duration $(arg duration)s -O $(arg save_dir)/$(arg out_file_prefix)_cam1.bag /poll_cameras/cam1/image_raw" />
-    <node pkg="rosbag" type="record" name="cam2_bag"
-              args="--duration $(arg duration)s -O $(arg save_dir)/$(arg out_file_prefix)_cam2.bag /poll_cameras/cam2/image_raw" />
-    <node pkg="rosbag" type="record" name="cam3_bag"
-              args="--duration $(arg duration)s -O $(arg save_dir)/$(arg out_file_prefix)_cam3.bag /poll_cameras/cam3/image_raw" />
+    <!-- node pkg="rosbag" type="record" name="cam0_bag"
+              args="duration $(arg duration)s -O $(arg save_dir)/$(arg out_file_prefix)_cam0.bag /poll_cameras/cam0/image_raw" / -->
 
 </launch>

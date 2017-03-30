@@ -37,6 +37,7 @@ int main(int argc, char** argv) {
 
 	ROS_INFO("Recording start.");	
 
+	cam.startSoftTrigger();
     cam.startPoll();
     ros::Duration(rec_length+1).sleep();
     cam.stopPoll();
