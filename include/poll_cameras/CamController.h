@@ -27,6 +27,7 @@
 #include <ros/message_traits.h>
 #include <dynamic_reconfigure/server.h>
 #include <flea3/Flea3DynConfig.h>
+#include <poll_cameras/PollCamerasDynConfig.h>
 #include <flea3/flea3_ros.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <sensor_msgs/Image.h>
@@ -40,10 +41,11 @@ namespace poll_cameras {
 class CamController {
   
 public:
-  using Cam = flea3::Flea3Ros;
-  using CamPtr = boost::shared_ptr<Cam>;
+  using Cam       = flea3::Flea3Ros;
+  using CamPtr    = boost::shared_ptr<Cam>;
   using ThreadPtr = boost::shared_ptr<boost::thread>;
-  using Config = flea3::Flea3DynConfig;
+  using CamConfig = flea3::Flea3DynConfig;
+  using Config    = PollCamerasDynConfig;
   using Time = ros::Time;
 
   CamController(const ros::NodeHandle& parentNode, int numCameras);
@@ -51,13 +53,16 @@ public:
   CamController(const CamController&) = delete;
   CamController& operator=(const CamController&) = delete;
 
+  void configureCams(CamConfig& config, int level);
   void configure(Config& config, int level);
 
+  void setRecordingLength(ros::Duration d) { recordingLength_ = d; }
+  void start();
   void startPoll();
   void stopPoll();
   void startSoftTrigger();
   void stopSoftTrigger();
-  void configureCameras(Config& config);
+  void configureCameras(CamConfig& config);
 
 private:
   // Thread functions are private.
@@ -74,21 +79,23 @@ private:
   std::condition_variable  grabFramesCV_;
   int                      numFramesToGrab_;
   int                      numCameras_;
-  Time                frameTime_;
+  int                      masterCamIdx_{0};
+  Time                     frameTime_;
   std::vector<CamPtr>      cameras_;
   bool                     isPolling_{false};
-  Time                lastPublishTime_;
-  ros::Duration            publishExposureInterval_{1.0};  // in seconds
-  double                   optimalShutter_{10};
-  double                   optimalGain_{0};
-  bool                     updateShutter_{false};
-  bool                     updateGain_{false};
+  Time                     lastPublishTime_;
+  ros::Duration            recordingLength_{60.0};  // in seconds
   int                      triggerSleepTime_{100000}; // in usec
   bool                     isTriggering_{false};
   ThreadPtr                imgPollThread_;
   ThreadPtr                triggerThread_;
+  std::mutex               timeMutex_;
+  std::condition_variable  timeCV_;
+  ros::Time                time_;
+  
   std::vector<ThreadPtr>   frameGrabThreads_;
-  dynamic_reconfigure::Server<Config>   configServer_;
+  std::shared_ptr<dynamic_reconfigure::Server<CamConfig> > camConfigServer_;
+  std::shared_ptr<dynamic_reconfigure::Server<Config> >    configServer_;
 
   long index_;
 };

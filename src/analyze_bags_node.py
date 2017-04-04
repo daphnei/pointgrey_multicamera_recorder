@@ -27,7 +27,7 @@ if __name__ == "__main__":
 		time_diffs = []
 		last_timestamp = None
    		for topic, msg, _ in bag.read_messages(topics=[]):
-			timestamp = (10e9 * msg.header.stamp.secs) + msg.header.stamp.nsecs
+			timestamp = (1e9 * msg.header.stamp.secs) + msg.header.stamp.nsecs
  
 			if i >= 1:
 				time_diffs.append(timestamp - last_timestamp)
@@ -46,9 +46,9 @@ if __name__ == "__main__":
 		time_diffs = np.array(time_diffs)
 		mean_diff = np.mean(time_diffs)
 		std_diff = np.std(time_diffs)
-		print("Mean time diff (seconds): " + str(10e-9 * mean_diff)) # + " ( " + str(1/(mean_diff* 1.0e-9)) + " FPS )")
-		print("FPS: " + str(1 / (10e-9 * mean_diff)))
-		print("Stdv time diff (seconds): " + str(10e-9 * std_diff))
+		print("Mean time diff (seconds): " + str(1e-9 * mean_diff)) # + " ( " + str(1/(mean_diff* 1.0e-9)) + " FPS )")
+		print("FPS: " + str(1 / (1e-9 * mean_diff)))
+		print("Stdv time diff (seconds): " + str(1e-9 * std_diff))
 
 		print("\n")
 		bag.close()
