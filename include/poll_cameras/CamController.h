@@ -21,6 +21,7 @@
 #include <boost/thread.hpp>
 #include <condition_variable>
 #include <boost/shared_ptr.hpp>
+#include <chrono>
 
 #include <ros/ros.h>
 #include <time.h>
@@ -58,10 +59,8 @@ public:
 
   void setRecordingLength(ros::Duration d) { recordingLength_ = d; }
   void start();
-  void startPoll();
-  void stopPoll();
-  void startSoftTrigger();
-  void stopSoftTrigger();
+  bool startPoll();
+  bool stopPoll();
   void configureCameras(CamConfig& config);
 
 private:
@@ -69,32 +68,26 @@ private:
   void pollImages();
   void triggerThread();
   void frameGrabThread(int camIndex);
+  void setFPS(double fps);
 
   // Variables for the camera state
   ros::NodeHandle          parentNode_;
-  ros::Subscriber          expSub_;
-  ros::Publisher           expPub_;
-  std::mutex               expMutex_;
-  std::mutex               grabFramesMutex_;
-  std::condition_variable  grabFramesCV_;
-  int                      numFramesToGrab_;
   int                      numCameras_;
   int                      masterCamIdx_{0};
-  Time                     frameTime_;
-  std::vector<CamPtr>      cameras_;
-  bool                     isPolling_{false};
-  Time                     lastPublishTime_;
   ros::Duration            recordingLength_{60.0};  // in seconds
-  int                      triggerSleepTime_{100000}; // in usec
-  bool                     isTriggering_{false};
-  ThreadPtr                imgPollThread_;
-  ThreadPtr                triggerThread_;
+  
+  std::mutex               pollMutex_;
+  bool                     keepPolling_{false};
+  
   std::mutex               timeMutex_;
   std::condition_variable  timeCV_;
   ros::Time                time_;
-  
+  double                   fps_{15.0};
+  std::chrono::nanoseconds maxWait_;
+
+  double                   exposureValue_{0};
+  std::vector<CamPtr>      cameras_;
   std::vector<ThreadPtr>   frameGrabThreads_;
-  std::shared_ptr<dynamic_reconfigure::Server<CamConfig> > camConfigServer_;
   std::shared_ptr<dynamic_reconfigure::Server<Config> >    configServer_;
 
   long index_;

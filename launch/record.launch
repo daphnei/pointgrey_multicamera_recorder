@@ -1,7 +1,7 @@
 <launch>
   <!--############### Node Configurations ##################-->
   <arg name="output" default="screen"/>
-  <arg name="fps"    default="100"/>
+  <arg name="fps"    default="10"/>
 
   <!-- Camera Configurations -->
   <arg name="cam0" default="17041936"/>
@@ -31,21 +31,10 @@
     <param name="cam2/calib_url" type="string" value="file://${ROS_HOME}/camera_info/pg_$(arg cam2).yaml"/>
     <param name="cam3/calib_url" type="string" value="file://${ROS_HOME}/camera_info/pg_$(arg cam3).yaml"/>
 
-    <param name="auto_shutter" type="bool" value="false"/>
-    <param name="shutter_ms" type="double" value="5"/>
-    <param name="auto_exposure" type="bool" value="false"/>
-    <param name="auto_gain" type="bool" value="false"/>
-    <param name="gain_db" type="double" value="0"/>
-    <param name="fps" type="double" value="$(arg fps)"/>
-    
     <param name="rec_length" type="double" value="$(arg duration)"/>
     <param name="num_cameras" type="int" value="$(arg num_cameras)"/>
+    <param name="fps" type="double" value="$(arg fps)"/>
     
-    <!-- trigger: -1 = free running, 0 = external or software trigger -->
-    <param name="trigger_source" type="int" value="0"/>
-    <param name="exposure" type="bool" value="false"/>
-    <param name="auto_exposure" type="bool" value="false"/>
-    <remap from="poll_cameras/exposure" to="/exposure_control/exposure"/>
   </node>
 
   <!-- Record from the camera's topic for specified amount of time. -->
