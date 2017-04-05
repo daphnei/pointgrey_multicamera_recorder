@@ -48,6 +48,7 @@ namespace poll_cameras {
     std::unique_lock<std::mutex> lock(timeMutex_);
     fps_ = fps;
     maxWait_ = std::chrono::nanoseconds((int64_t)(0.25 * 1e9 / fps_));
+    //maxWait_ = std::chrono::nanoseconds((int64_t)(1000.0 * 1e9 / fps_));
   }
 
 
@@ -77,14 +78,14 @@ namespace poll_cameras {
     setFPS(config.fps);
 
     CamConfig cc;
-    cc.fps = 10.0;
+    cc.fps              = config.fps;
     cc.video_mode       = 23; // format7
     cc.format7_mode     = 0;
     cc.width            = config.width;
     cc.height           = config.height;
     cc.raw_bayer_output = false;
     cc.trigger_source   = -1; // free running
-    cc.pixel_format     = 0; // unspecified
+    cc.pixel_format     = 22; // raw8
     cc.trigger_polarity = 0;
     cc.strobe_control   = -1;
     cc.strobe_polarity  = 0;
@@ -132,6 +133,7 @@ namespace poll_cameras {
       t0 = ros::Time::now();
       bool ret = curCam->Grab(image_msg);
       ros::Time t1 = ros::Time::now();
+      //std::cout << camIndex << " t0: " << t0 << " dt: " << (t1-t0) << std::endl;
       {  // this section is protected by mutex
         
         std::unique_lock<std::mutex> lock(timeMutex_);
@@ -146,14 +148,12 @@ namespace poll_cameras {
             // lock will be free while waiting!
             if (timeCV_.wait_for(lock, maxWait_) == std::cv_status::timeout) {
               ret = false;
-              std::cout << camIndex << " XXXXXXXXXXXXXXXXXXXXXXXXX timed out!" << std::endl;
             }
           }
           lastTime = time_;
         }
         image_msg->header.stamp = time_;
       }
-      //std::cout << camIndex << " " << time_ << " grab time: " << (t1-t0) << std::endl;
       if (ret) {
         curCam->Publish(image_msg);
       } else {
@@ -177,33 +177,33 @@ namespace poll_cameras {
     config.strobe_control  = 2;  // GPIO 2
     config.strobe_polarity = 0;  // low
     config.trigger_source  = -1; // free running
+
+    
 #if USE_AUTO_EXP
     config.exposure        = true;
     config.auto_shutter    = true;
     config.auto_gain       = true;
 #endif
-    
+    CamConfig cc(config);
     cameras_[masterCamIdx_]->Stop();
-    cameras_[masterCamIdx_]->camera().Configure(config);
+    cameras_[masterCamIdx_]->camera().Configure(cc);
     cameras_[masterCamIdx_]->Start();
     
 
     // Switch on trigger for slave
-    config.fps              = fps_;  // this will be ignored!!!
-    config.trigger_source   = 0;  // external triggered
+    config.fps              = fps_ * 1.5;  // max frame rate!
     config.trigger_polarity = 0; // low
     config.trigger_source   = 3;   // GPIO 3 (wired to GPIO 2 of master)
     config.exposure         = false;
     config.auto_shutter     = false;
     config.auto_gain        = false;
     
-    ROS_INFO("slave cams: setting shutter: %.2f", config.shutter_ms);
-
     for (int i=0; i<numCameras_; ++i) {
       if (i == masterCamIdx_) continue;
+      CamConfig cc2(config);
       CamPtr curCam = cameras_[i];
       curCam->Stop();
-      curCam->camera().Configure(config);
+      curCam->camera().Configure(cc2);
       curCam->Start();
     }
   }
