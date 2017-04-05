@@ -1,7 +1,7 @@
 <launch>
   <!--############### Node Configurations ##################-->
   <arg name="output" default="screen"/>
-  <arg name="fps"    default="10"/>
+  <arg name="fps"    default="75"/>
 
   <!-- Camera Configurations -->
   <arg name="cam0" default="17041936"/>
@@ -9,7 +9,7 @@
   <arg name="cam2" default="17041930"/>
   <arg name="cam3" default="17041936"/>
 
-  <arg name="duration" default="5000" />
+  <arg name="duration" default="10" />
   <arg name="num_cameras" default="2" />
   <arg name="out_file_prefix" default="rec" /> 
   <arg name="save_dir" default="/data/" />
@@ -34,6 +34,8 @@
     <param name="rec_length" type="double" value="$(arg duration)"/>
     <param name="num_cameras" type="int" value="$(arg num_cameras)"/>
     <param name="fps" type="double" value="$(arg fps)"/>
+    <param name="shutter_ms" type="double" value="0.005"/>
+    <param name="gain_db" type="double" value="0"/>
     
   </node>
 

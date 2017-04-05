@@ -20,18 +20,17 @@
 #define THREAD_GUARD 0
 
 namespace poll_cameras {
-  CamController::CamController(const ros::NodeHandle& parentNode, int numCameras)
+  CamController::CamController(const ros::NodeHandle& parentNode)
     : parentNode_(parentNode) {
     configServer_.reset(new dynamic_reconfigure::Server<Config>(parentNode_));
-
-    numCameras_ = numCameras;
+    
+    parentNode.getParam("num_cameras", numCameras_);
 
     double fps;
     parentNode.getParam("fps", fps);
     setFPS(fps);
-    parentNode.getParam("exposure_value", exposureValue_);
 
-    for (int i = 0; i<numCameras_; i++) {
+    for (int i = 0; i < numCameras_; i++) {
       CamPtr cam_tmp = 
         boost::make_shared<Cam>(parentNode_, "cam" + std::to_string(i));
       cameras_.push_back(move(cam_tmp));
@@ -53,8 +52,19 @@ namespace poll_cameras {
 
 
   void CamController::start() {
-    time_ = ros::Time::now();  
+    time_  = ros::Time::now();
+    double duration(60);  // in seconds
+    parentNode_.getParam("rec_length", duration);
+
+    timer_ = parentNode_.createTimer(ros::Duration(duration),
+                                     boost::bind(&CamController::timerCallback,
+                                                 this, _1), /*oneshot*/ true);
     startPoll();
+  }
+
+  void CamController::timerCallback(const ros::TimerEvent &event) {
+    ROS_INFO("timer expired, shutting down!");
+    ros::shutdown();
   }
 
   
@@ -65,7 +75,7 @@ namespace poll_cameras {
                "Initializing reconfigure server");
     }
     setFPS(config.fps);
-    exposureValue_ = config.exposure_value;
+
     CamConfig cc;
     cc.fps = 10.0;
     cc.video_mode       = 23; // format7
@@ -78,28 +88,23 @@ namespace poll_cameras {
     cc.trigger_polarity = 0;
     cc.strobe_control   = -1;
     cc.strobe_polarity  = 0;
-    cc.exposure         = true;
-    cc.auto_exposure    = true;
-    cc.exposure_value   = 1.35;
-    cc.auto_shutter     = true;
-    cc.shutter_ms       = 10.0;
+    cc.exposure         = false;
+    cc.auto_exposure    = false;
+    cc.exposure_value   = config.exposure_value;
+    cc.auto_shutter     = false;
+    cc.shutter_ms       = config.shutter_ms;
     cc.auto_gain        = false;
-    cc.gain_db          = 0.0;
+    cc.gain_db          = config.gain_db;
     cc.white_balance    = false;
     cc.auto_white_balance = true;
     cc.wb_blue          = 0;
     cc.wb_red           = 0;
     cc.brightness       = 0.0;
     cc.gamma            = 0.5;
-    configureCams(cc, 0);
+    configureCams(cc);
   }
 
-  void CamController::configureCams(CamConfig& config, int level) {
-    if (level < 0) {
-      ROS_INFO("%s: %s", parentNode_.getNamespace().c_str(),
-               "Initializing cam reconfigure server");
-    }
-    ROS_INFO("configuring camera!");    
+  void CamController::configureCams(CamConfig& config) {
     if (stopPoll()) {
       // something was running
       configureCameras(config);
@@ -108,7 +113,6 @@ namespace poll_cameras {
       // nothing was running
       configureCameras(config);
     }
-    ROS_INFO("configuring camera done!");    
   }
 
   void CamController::frameGrabThread(int camIndex) {
@@ -147,8 +151,9 @@ namespace poll_cameras {
           }
           lastTime = time_;
         }
+        image_msg->header.stamp = time_;
       }
-      std::cout << camIndex << " " << time_ << " grab time: " << (t1-t0) << std::endl;
+      //std::cout << camIndex << " " << time_ << " grab time: " << (t1-t0) << std::endl;
       if (ret) {
         curCam->Publish(image_msg);
       } else {
@@ -172,10 +177,11 @@ namespace poll_cameras {
     config.strobe_control  = 2;  // GPIO 2
     config.strobe_polarity = 0;  // low
     config.trigger_source  = -1; // free running
+#if USE_AUTO_EXP
     config.exposure        = true;
-    config.exposure_value  = exposureValue_;
     config.auto_shutter    = true;
     config.auto_gain       = true;
+#endif
     
     cameras_[masterCamIdx_]->Stop();
     cameras_[masterCamIdx_]->camera().Configure(config);
@@ -186,9 +192,10 @@ namespace poll_cameras {
     config.fps              = fps_;  // this will be ignored!!!
     config.trigger_source   = 0;  // external triggered
     config.trigger_polarity = 0; // low
-    config.trigger_source = 3;   // GPIO 3 (wired to GPIO 2 of master)
-    config.auto_shutter   = false;
-    config.auto_gain      = false;
+    config.trigger_source   = 3;   // GPIO 3 (wired to GPIO 2 of master)
+    config.exposure         = false;
+    config.auto_shutter     = false;
+    config.auto_gain        = false;
     
     ROS_INFO("slave cams: setting shutter: %.2f", config.shutter_ms);
 
@@ -202,7 +209,6 @@ namespace poll_cameras {
   }
 
   bool CamController::startPoll() {
-    ROS_INFO("starting polling");
     std::unique_lock<std::mutex> lock(pollMutex_);
     if (frameGrabThreads_.empty()) {
       keepPolling_ = true;
@@ -211,15 +217,12 @@ namespace poll_cameras {
         frameGrabThreads_.push_back(
           boost::make_shared<boost::thread>(&CamController::frameGrabThread, this, i));
       }
-      ROS_INFO("%zu threads started!", frameGrabThreads_.size());
       return (true);
     }
-    ROS_INFO("no threads started!");
     return (false);
   }
 
   bool CamController::stopPoll() {
-    ROS_INFO("stopping polling");
     {
       std::unique_lock<std::mutex> lock(pollMutex_);
       keepPolling_ = false;
@@ -234,10 +237,8 @@ namespace poll_cameras {
       for (auto &cam : cameras_) {
         cam->camera().StopCapture();
       }
-      ROS_INFO("stopped running threads!");
       return (true);
     }
-    ROS_INFO("nothing to stop!");
     return (false);
   }
 

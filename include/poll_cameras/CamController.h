@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef EXPOSURECONTROL_CAMTEST_H
-#define EXPOSURECONTROL_CAMTEST_H
+#ifndef POLLCAMERAS_CAMCONTROLLER_H
+#define POLLCAMERAS_CAMCONTROLLER_H
 
 #include <mutex>
 #include <boost/thread.hpp>
@@ -28,9 +28,8 @@
 #include <ros/message_traits.h>
 #include <dynamic_reconfigure/server.h>
 #include <flea3/Flea3DynConfig.h>
-#include <poll_cameras/PollCamerasDynConfig.h>
 #include <flea3/flea3_ros.h>
-#include <std_msgs/Float64MultiArray.h>
+#include <poll_cameras/PollCamerasDynConfig.h>
 #include <sensor_msgs/Image.h>
 
 namespace flea3 {
@@ -49,19 +48,19 @@ public:
   using Config    = PollCamerasDynConfig;
   using Time = ros::Time;
 
-  CamController(const ros::NodeHandle& parentNode, int numCameras);
+  CamController(const ros::NodeHandle& parentNode);
   ~CamController();
   CamController(const CamController&) = delete;
   CamController& operator=(const CamController&) = delete;
 
-  void configureCams(CamConfig& config, int level);
+  void configureCams(CamConfig& config);
   void configure(Config& config, int level);
 
-  void setRecordingLength(ros::Duration d) { recordingLength_ = d; }
   void start();
   bool startPoll();
   bool stopPoll();
   void configureCameras(CamConfig& config);
+  void timerCallback(const ros::TimerEvent &event);
 
 private:
   // Thread functions are private.
@@ -74,7 +73,6 @@ private:
   ros::NodeHandle          parentNode_;
   int                      numCameras_;
   int                      masterCamIdx_{0};
-  ros::Duration            recordingLength_{60.0};  // in seconds
   
   std::mutex               pollMutex_;
   bool                     keepPolling_{false};
@@ -85,10 +83,10 @@ private:
   double                   fps_{15.0};
   std::chrono::nanoseconds maxWait_;
 
-  double                   exposureValue_{0};
   std::vector<CamPtr>      cameras_;
   std::vector<ThreadPtr>   frameGrabThreads_;
   std::shared_ptr<dynamic_reconfigure::Server<Config> >    configServer_;
+  ros::Timer               timer_;
 
   long index_;
 };

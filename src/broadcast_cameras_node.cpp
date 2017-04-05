@@ -33,8 +33,7 @@ int main(int argc, char** argv) {
 
     ROS_INFO("Recording for %f seconds on %d cameras.", rec_length, num_cameras);
  
-    poll_cameras::CamController controller(nh, num_cameras);
-    controller.setRecordingLength(ros::Duration(rec_length));
+    poll_cameras::CamController controller(nh);
     controller.start(); // this call returns
     ros::spin(); // because this must be called!
   } catch (const std::exception& e) {
