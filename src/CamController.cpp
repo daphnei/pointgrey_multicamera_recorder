@@ -47,7 +47,7 @@ namespace poll_cameras {
   void CamController::setFPS(double fps) {
     std::unique_lock<std::mutex> lock(timeMutex_);
     fps_ = fps;
-    maxWait_ = std::chrono::nanoseconds((int64_t)(0.25 * 1e9 / fps_));
+    maxWait_ = std::chrono::nanoseconds((int64_t)(0.5 * 1e9 / fps_));
     //maxWait_ = std::chrono::nanoseconds((int64_t)(1000.0 * 1e9 / fps_));
   }
 
@@ -80,7 +80,7 @@ namespace poll_cameras {
     CamConfig cc;
     cc.fps              = config.fps;
     cc.video_mode       = 23; // format7
-    cc.format7_mode     = 0;
+    cc.format7_mode     = config.format7_mode;
     cc.width            = config.width;
     cc.height           = config.height;
     cc.raw_bayer_output = false;
@@ -96,10 +96,10 @@ namespace poll_cameras {
     cc.shutter_ms       = config.shutter_ms;
     cc.auto_gain        = false;
     cc.gain_db          = config.gain_db;
-    cc.white_balance    = false;
-    cc.auto_white_balance = true;
-    cc.wb_blue          = 0;
-    cc.wb_red           = 0;
+    cc.white_balance    = config.white_balance;
+    cc.auto_white_balance = config.auto_white_balance;
+    cc.wb_blue          = config.wb_blue;
+    cc.wb_red           = config.wb_red;
     cc.brightness       = 0.0;
     cc.gamma            = 0.5;
     configureCams(cc);
@@ -144,12 +144,14 @@ namespace poll_cameras {
         } else {
           // slave cameras wait until the master has published
           // a new timestamp.
+#if 1
           while (time_ <= lastTime) {
             // lock will be free while waiting!
             if (timeCV_.wait_for(lock, maxWait_) == std::cv_status::timeout) {
               ret = false;
             }
           }
+#endif          
           lastTime = time_;
         }
         image_msg->header.stamp = time_;
@@ -178,12 +180,14 @@ namespace poll_cameras {
     config.strobe_polarity = 0;  // low
     config.trigger_source  = -1; // free running
 
+
     
 #if USE_AUTO_EXP
     config.exposure        = true;
     config.auto_shutter    = true;
     config.auto_gain       = true;
 #endif
+
     CamConfig cc(config);
     cameras_[masterCamIdx_]->Stop();
     cameras_[masterCamIdx_]->camera().Configure(cc);
@@ -192,8 +196,9 @@ namespace poll_cameras {
 
     // Switch on trigger for slave
     config.fps              = fps_ * 1.5;  // max frame rate!
-    config.trigger_polarity = 0; // low
+    config.trigger_polarity = 0;   // low
     config.trigger_source   = 3;   // GPIO 3 (wired to GPIO 2 of master)
+    config.trigger_mode     = 14;  // overlapped processing
     config.exposure         = false;
     config.auto_shutter     = false;
     config.auto_gain        = false;
