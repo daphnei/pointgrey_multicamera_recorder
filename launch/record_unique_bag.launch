@@ -1,0 +1,6 @@
+<launch>
+  <!--############### Node Configurations ##################-->
+  <!-- Runs a script that launches record.launch with a unique name, so as to avoid file overwriting. -->
+  <node pkg="poll_cameras" type="record.sh" name="record_launcher_node"
+        args="" />
+</launch>
