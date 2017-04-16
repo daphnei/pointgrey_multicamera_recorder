@@ -17,8 +17,6 @@
 #include <poll_cameras/CamController.h>
 #include <math.h>
 
-#define THREAD_GUARD 0
-
 namespace poll_cameras {
   CamController::CamController(const ros::NodeHandle& parentNode)
     : parentNode_(parentNode) {
@@ -132,8 +130,8 @@ namespace poll_cameras {
       CamPtr curCam = cameras_[camIndex];
       t0 = ros::Time::now();
       bool ret = curCam->Grab(image_msg);
+      bool timedOut(false);
       ros::Time t1 = ros::Time::now();
-      //std::cout << camIndex << " t0: " << t0 << " dt: " << (t1-t0) << std::endl;
       {  // this section is protected by mutex
         
         std::unique_lock<std::mutex> lock(timeMutex_);
@@ -148,7 +146,15 @@ namespace poll_cameras {
           while (time_ <= lastTime) {
             // lock will be free while waiting!
             if (timeCV_.wait_for(lock, maxWait_) == std::cv_status::timeout) {
-              ret = false;
+              // We timed out, what happened? In theory, we should only have to wait
+              // a very short time until the master camera updates the global time stamp.
+              // But wait, maybe there was on old frame in our buffer which we
+              // retrieved when calling Grab(), so we didn't have to wait for the strobe,
+              // grabbed the old frame and are now waiting for the master who is waiting for the
+              // next frame. What to do? Let's see if there is another frame waiting
+              // for us, and grab that one.
+              timedOut = true;
+              ret = curCam->GrabNonBlocking(image_msg);
             }
           }
 #endif          
@@ -159,7 +165,11 @@ namespace poll_cameras {
       if (ret) {
         curCam->Publish(image_msg);
       } else {
-        ROS_ERROR("There was a problem grabbing a frame from cam%d", camIndex);
+        if (!timedOut) {
+          ROS_ERROR("There was a problem grabbing a frame from cam%d", camIndex);
+        } else {
+          ROS_ERROR("Late frame from cam%d", camIndex);
+        }
       }
       {
         std::unique_lock<std::mutex> lock(pollMutex_);

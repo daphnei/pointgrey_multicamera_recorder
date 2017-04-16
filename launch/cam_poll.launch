@@ -1,16 +1,16 @@
 <launch>
   <!--############### Node Configurations ##################-->
   <arg name="output" default="screen"/>
-  <arg name="fps"    default="10"/>
+  <arg name="fps"    default="83"/>
 
   <!-- Camera Configurations -->
   <arg name="cam0" default="17041936"/>
-  <arg name="cam1" default="17041925"/>
+  <arg name="cam1" default="17041931"/>
   <arg name="cam2" default="17041932"/>
-  <arg name="cam3" default="17041931"/>
+  <arg name="cam3" default="17041925"/>
 
-  <arg name="duration" default="20000" />
-  <arg name="num_cameras" default="4" />
+  <arg name="duration" default="30" />
+  <arg name="num_cameras" default="3" />
   <arg name="out_file_prefix" default="rec" /> 
   <arg name="save_dir" default="/data/" />
 
@@ -51,4 +51,7 @@
     <param name="gain_db" type="double" value="0"/>
 
   </node>
+
+  <node pkg="rosbag" type="record" name="record_bag"
+        args="--duration $(arg duration)s -O $(arg save_dir)/$(arg out_file_prefix).bag /poll_cameras/cam0/image_raw /poll_cameras/cam1/image_raw /poll_cameras/cam2/image_raw /poll_cameras/cam3/image_raw" />
 </launch>
