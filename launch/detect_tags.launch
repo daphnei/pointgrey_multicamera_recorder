@@ -2,14 +2,51 @@
   <arg name="output" default="screen"/>
   <arg name="camera" default="poll_cameras/cam2"/>
   <arg name="image" default="image_raw"/>
+  <arg name="refine" default="true"/>
+  <arg name="family" default="0"/> <!-- 0 = t36h11 -->
+  <arg name="type" default="0"/> <!-- MIT detector -->
+  <arg name="black_border" default="1"/> 
 
-  <!-- apriltag detector node -->
+  <!-- apriltag detector nodes -->
   <node pkg="apriltag_ros" type="apriltag_detector_node"
-    name="apriltag_detector" output="$(arg output)" ns="$(arg camera)">
-    <param name="refine" type="bool" value="true"/>
-    <param name="family" type="int" value="0"/> <!-- 0 = t36h11 -->
-    <param name="type" type="int" value="0"/> <!-- MIT detector -->
-    <param name="black_border" type="int" value="1"/>
+    name="apriltag_detector" output="$(arg output)" ns="poll_cameras/cam0">
+    <param name="refine" type="bool" value="$(arg refine)"/>
+    <param name="family" type="int" value="$(arg family)"/>
+    <param name="type" type="int" value="$(arg type)"/>
+    <param name="black_border" type="int" value="$(arg black_border)"/>
+
+    <remap from="~image" to="$(arg image)"/>
+    <remap from="~apriltags" to="apriltags"/>
+    <remap from="~image_detection" to="image_detection"/>
+  </node>
+  <node pkg="apriltag_ros" type="apriltag_detector_node"
+    name="apriltag_detector" output="$(arg output)" ns="poll_cameras/cam1">
+    <param name="refine" type="bool" value="$(arg refine)"/>
+    <param name="family" type="int" value="$(arg family)"/>
+    <param name="type" type="int" value="$(arg type)"/>
+    <param name="black_border" type="int" value="$(arg black_border)"/>
+
+    <remap from="~image" to="$(arg image)"/>
+    <remap from="~apriltags" to="apriltags"/>
+    <remap from="~image_detection" to="image_detection"/>
+  </node>
+  <node pkg="apriltag_ros" type="apriltag_detector_node"
+    name="apriltag_detector" output="$(arg output)" ns="poll_cameras/cam2">
+    <param name="refine" type="bool" value="$(arg refine)"/>
+    <param name="family" type="int" value="$(arg family)"/>
+    <param name="type" type="int" value="$(arg type)"/>
+    <param name="black_border" type="int" value="$(arg black_border)"/>
+
+    <remap from="~image" to="$(arg image)"/>
+    <remap from="~apriltags" to="apriltags"/>
+    <remap from="~image_detection" to="image_detection"/>
+  </node>
+  <node pkg="apriltag_ros" type="apriltag_detector_node"
+    name="apriltag_detector" output="$(arg output)" ns="poll_cameras/cam3">
+    <param name="refine" type="bool" value="$(arg refine)"/>
+    <param name="family" type="int" value="$(arg family)"/>
+    <param name="type" type="int" value="$(arg type)"/>
+    <param name="black_border" type="int" value="$(arg black_border)"/>
 
     <remap from="~image" to="$(arg image)"/>
     <remap from="~apriltags" to="apriltags"/>
