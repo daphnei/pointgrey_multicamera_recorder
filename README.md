@@ -1,7 +1,31 @@
 # Camera polling server for synchronized video recording
 
-The poll_cameras package contains code to record synchronized video
-across multiple point grey cameras.
+This repo contains a ROS node for recording simeoultaneously from several Pointgrey Cameras, with aligned timestamps.
+It is corrently a work in progress. All code has been tested on four Grasshopper cameras.
+
+## Installation dependencies:
+
+- The bgp package (which itself has gtsam and other dependencies, see documentation there)
+ 
+    git clone https://github.com/berndpfrommer/bgp.git
+
+- The flea3 driver:
+
+    git clone https://github.com/KumarRobotics/flea3.git
+
+## Testing extrinsic calibration:
+
+- Record a bag with images (just a few seconds should be plenty enough):
+
+    # launch camera polling
+    roslaunch poll_cameras cam_poll.launch 
+    # in another shell record into bag, kill record after a few seconds
+    rosbag record -O /data/extrinsic_calib_2017-04-20.bag /poll_cameras/cam0/image_raw /poll_cameras/cam1/image_raw /poll_cameras/cam2/image_raw /poll_cameras/cam3/image_raw
+
+- Run the extrinsic calibration on the bag
+
+    roslaunch poll_cameras extrinsic_calibration.launch bag_file:=/data/extrinsic_calib_2017-04-20.bag 
+
 
 ## Getting maximum USB3 performance:
 To achieve full performance, each camera needs to be served by a

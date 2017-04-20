@@ -190,9 +190,7 @@ namespace poll_cameras {
     config.strobe_polarity = 0;  // low
     config.trigger_source  = -1; // free running
 
-
-    
-#if USE_AUTO_EXP
+#ifdef USE_AUTO_EXP
     config.exposure        = true;
     config.auto_shutter    = true;
     config.auto_gain       = true;
@@ -209,6 +207,7 @@ namespace poll_cameras {
     config.trigger_polarity = 0;   // low
     config.trigger_source   = 3;   // GPIO 3 (wired to GPIO 2 of master)
     config.trigger_mode     = 14;  // overlapped processing
+
     config.exposure         = false;
     config.auto_shutter     = false;
     config.auto_gain        = false;
