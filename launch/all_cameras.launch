@@ -6,12 +6,12 @@
   camera_serial:=
 
   <!-- MASTER -->
-  <group ns="camera_17041936">
+  <group ns="camera_17041930">
     <node pkg="nodelet" type="nodelet" name="camera_nodelet_manager" args="manager" />
     <node pkg="nodelet" type="nodelet" name="camera_nodelet"
           args="load pointgrey_camera_driver/PointGreyCameraNodelet camera_nodelet_manager" >
-      <param name="frame_id" value="17041936" />
-      <param name="serial" value="17041936" />
+      <param name="frame_id" value="17041930" />
+      <param name="serial" value="17041930" />
       <param name="frame_rate" value="75" />
       <param name="enable_strobe1" type="bool" value="0"/>
       <param name="enable_strobe2" type="bool" value="1"/>
