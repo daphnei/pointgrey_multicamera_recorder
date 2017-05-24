@@ -1,58 +1,30 @@
 <launch>
-  <!--############### Node Configurations ##################-->
-  <arg name="output" default="screen"/>
   <arg name="fps"    default="80"/>
+  <arg name="shutter_ms" default="2.0"/>
 
-  <!-- Camera Configurations -->
-  <arg name="cam0" default="17041930"/>
-  <arg name="cam1" default="17041931"/>
-  <arg name="cam2" default="17041932"/>
-  <arg name="cam3" default="17041925"/>
-
+  <!-- time (sec for which to record) -->
   <arg name="duration" default="10" />
-  <arg name="num_cameras" default="4" />
+  
   <arg name="out_file_prefix" default="rec" /> 
   <arg name="save_dir" default="/data/" />
 
-  <!-- Broadcast camera image for specified amount of time. -->
-  <node pkg="poll_cameras" type="poll_cameras_node" name="poll_cameras" output="$(arg output)">
-    <param name="cam0/identifier" type="string" value="$(arg cam0)"/>
-    <param name="cam1/identifier" type="string" value="$(arg cam1)"/>
-    <param name="cam2/identifier" type="string" value="$(arg cam2)"/>
-    <param name="cam3/identifier" type="string" value="$(arg cam3)"/>
+  <arg name="output" default="screen"/>
 
-    <param name="cam0/camera_name" type="string" value="pg_$(arg cam0)"/>
-    <param name="cam1/camera_name" type="string" value="pg_$(arg cam1)"/>
-    <param name="cam2/camera_name" type="string" value="pg_$(arg cam2)"/>
-    <param name="cam3/camera_name" type="string" value="pg_$(arg cam3)"/>
+  <!--- launch camera polling -->
+  <include file="$(find poll_cameras)/launch/just_cameras.launch">
+    <arg name="duration" value="$(arg duration)"/>
+    <arg name="fps" value="$(arg fps)"/>
+    <arg name="shutter_ms" value="$(arg shutter_ms)"/>
+  </include>
 
-    <param name="cam0/calib_url" type="string" value="file://${ROS_HOME}/camera_info/pg_$(arg cam0).yaml"/>
-    <param name="cam1/calib_url" type="string" value="file://${ROS_HOME}/camera_info/pg_$(arg cam1).yaml"/>
-    <param name="cam2/calib_url" type="string" value="file://${ROS_HOME}/camera_info/pg_$(arg cam2).yaml"/>
-    <param name="cam3/calib_url" type="string" value="file://${ROS_HOME}/camera_info/pg_$(arg cam3).yaml"/>
+  <!--- launch audio recording.
+      - first, disable pulseaudio so it doesn't start (but don't uninstall)
+      - find out with "arecord -l" which card (first number before ',') and device to use
+  -->
+  <node pkg="poll_cameras" type="record_audio_timed.py" name="timed_audio" args="$(arg duration)" output="$(arg output)"/>
 
-    <param name="rec_length" type="double" value="$(arg duration)"/>
-    <param name="num_cameras" type="int" value="$(arg num_cameras)"/>
-    <param name="fps" type="double" value="$(arg fps)"/>
-    <!-- format7_mode
-	 0 = full resolution,
-	 1 = 2x2 bayer binning (1 x fps, half resolution, but 2 x brightness),
-	 2 = 2x2 decimation (2 x fps, half resolution, 1 x brightness)
-    -->
-    <param name="format7_mode" type="int" value="1"/>
-    <param name="width"  type="int" value="1024"/>
-    <param name="height" type="int" value="1024"/>
-    <param name="auto_white_balance" type="bool" value="false"/>
-    <param name="white_balance" type="bool" value="true"/>
-    <param name="wb_red" type="int" value="652"/>
-    <param name="wb_blue" type="int" value="589"/>
-    
-    <param name="shutter_ms" type="double" value="2.0"/>
-    <param name="gain_db" type="double" value="0"/>
 
-  </node>
-  <!-- Record from the camera's topic for specified amount of
-       time. -->
+  <!-- record from the camera's topic for specified amount of time. -->
   <node pkg="rosbag" type="record" name="record_bag"
-        args="--duration $(arg duration)s -O $(arg save_dir)/$(arg out_file_prefix).bag /poll_cameras/cam0/image_raw /poll_cameras/cam1/image_raw /poll_cameras/cam2/image_raw /poll_cameras/cam3/image_raw" />
+        args="--duration $(arg duration)s -O $(arg save_dir)/$(arg out_file_prefix).bag /poll_cameras/cam0/image_raw /poll_cameras/cam1/image_raw /poll_cameras/cam2/image_raw /poll_cameras/cam3/image_raw /audio/audio" />
 </launch>

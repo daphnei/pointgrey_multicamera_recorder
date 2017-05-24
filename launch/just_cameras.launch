@@ -2,6 +2,7 @@
   <!--############### Node Configurations ##################-->
   <arg name="output" default="screen"/>
   <arg name="fps"    default="5"/>
+  <arg name="shutter_ms"    default="2.0"/>
 
   <!-- Camera Configurations -->
   <arg name="cam0" default="17041930"/>
@@ -11,8 +12,6 @@
 
   <arg name="duration" default="30000" />
   <arg name="num_cameras" default="4" />
-  <arg name="out_file_prefix" default="rec" /> 
-  <arg name="save_dir" default="/data/" />
 
   <!-- Broadcast camera image for specified amount of time. -->
   <node pkg="poll_cameras" type="poll_cameras_node" name="poll_cameras" output="$(arg output)">
@@ -47,7 +46,7 @@
     <param name="wb_red" type="int" value="652"/>
     <param name="wb_blue" type="int" value="589"/>
     
-    <param name="shutter_ms" type="double" value="2.0"/>
+    <param name="shutter_ms" type="double" value="$(arg shutter_ms)"/>
     <param name="gain_db" type="double" value="0"/>
   </node>
 </launch>
