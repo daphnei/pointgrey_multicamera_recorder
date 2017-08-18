@@ -64,6 +64,7 @@ namespace poll_cameras {
   void CamController::timerCallback(const ros::TimerEvent &event) {
     ROS_INFO("timer expired, shutting down!");
     ros::shutdown();
+    ROS_INFO("shutdown complete!");
   }
 
   
@@ -176,6 +177,7 @@ namespace poll_cameras {
         if (!keepPolling_) break;
       }
     }
+    ROS_INFO("frame grabbing thread exited!");
   }
 
   void CamController::configureCameras(CamConfig& config) {

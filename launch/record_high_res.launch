@@ -1,6 +1,6 @@
 <launch>
-  <arg name="fps"    default="80"/>
-  <arg name="shutter_ms" default="2.0"/>
+  <arg name="fps"    default="40"/>
+  <arg name="shutter_ms" default="8.0"/>
 
   <!-- time (sec for which to record) -->
   <arg name="duration" default="20" />
@@ -15,6 +15,9 @@
     <arg name="duration" value="$(arg duration)"/>
     <arg name="fps" value="$(arg fps)"/>
     <arg name="shutter_ms" value="$(arg shutter_ms)"/>
+    <arg name="format7_mode"  value="0"/>
+    <arg name="height"  value="2048"/>
+    <arg name="width"   value="2048"/>
   </include>
 
   <!--- launch audio recording.

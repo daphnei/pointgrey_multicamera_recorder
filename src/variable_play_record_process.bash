@@ -13,7 +13,12 @@ if [ ! -z "$2" ]; then
 fi
 
 # now run the aplay in the background (ampersand at end of line!), with some delay
-(sleep $audio_delay; aplay ~/Music/bodnoise.wav) &
+song_file="~/Music/bdynoise.wav"
+if [ ! -z "$3" ]; then
+   song_file=$3
+fi
+
+(sleep $audio_delay; aplay $song_file) &
 
 # launch the record and processing
 ~/catkin_ws/src/poll_cameras/src/record_and_process.bash $duration

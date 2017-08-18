@@ -20,7 +20,7 @@
 
 
 int main(int argc, char** argv) {
-  ROS_INFO("Initializaing Camera Polling Node");
+  ROS_INFO("Initializing Camera Polling Node");
 
   ros::init(argc, argv, "poll_cameras");
   ros::NodeHandle nh("~");
